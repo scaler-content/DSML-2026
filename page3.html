@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: sans-serif; background: #fff; padding: 1.5rem; }
+
+  .input-row { display: flex; gap: 12px; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: flex-end; }
+  .input-group { display: flex; flex-direction: column; gap: 4px; }
+  .input-group label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .input-group.s-start label { color: #185FA5; }
+  .input-group.s-stop  label { color: #A32D2D; }
+  .input-group.s-step  label { color: #27500A; }
+  .input-group input { width: 80px; font-size: 18px; font-weight: 700; text-align: center; border-radius: 8px; border: 2px solid #ddd; padding: 6px 8px; outline: none; transition: border-color 0.2s; }
+  .input-group.s-start input:focus { border-color: #185FA5; }
+  .input-group.s-stop  input:focus { border-color: #A32D2D; }
+  .input-group.s-step  input:focus { border-color: #27500A; }
+  .input-group.s-start input { color: #185FA5; }
+  .input-group.s-stop  input { color: #A32D2D; }
+  .input-group.s-step  input { color: #27500A; }
+
+  .fn-preview { font-family: monospace; font-size: 16px; font-weight: 600; background: #FAEEDA; border: 1.5px solid #EF9F27; border-radius: 8px; padding: 8px 16px; color: #633806; white-space: nowrap; align-self: flex-end; }
+
+  .error-msg { font-size: 12px; color: #A32D2D; background: #FCEBEB; border: 1px solid #E24B4A; border-radius: 6px; padding: 6px 12px; margin-bottom: 1rem; display: none; }
+
+  .btn-row { display: flex; gap: 10px; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: center; }
+  button { font-size: 13px; padding: 7px 18px; border-radius: 8px; border: 1px solid #ccc; background: #fff; color: #222; cursor: pointer; }
+  button:hover { background: #f0f0f0; }
+  button.primary { background: #EF9F27; color: #fff; border-color: #EF9F27; }
+  button.primary:hover { background: #BA7517; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  select { font-size: 13px; padding: 5px 10px; border-radius: 8px; border: 1px solid #ccc; background: #fff; color: #222; }
+
+  .progress-bar { height: 4px; background: #FAEEDA; border-radius: 2px; margin-bottom: 1.25rem; overflow: hidden; }
+  .progress-fill { height: 100%; background: #EF9F27; border-radius: 2px; transition: width 0.3s; }
+  .step-info { font-size: 13px; color: #633806; background: #FAEEDA; border: 1px solid #EF9F27; border-radius: 8px; padding: 10px 16px; margin-bottom: 1.25rem; min-height: 36px; text-align: center; }
+
+  /* Syntax card */
+  .syntax-card { background: #FAEEDA; border: 2px solid #EF9F27; border-radius: 12px; padding: 16px 20px; margin-bottom: 1.25rem; text-align: center; opacity: 0; transition: opacity 0.5s; }
+  .syntax-fn { font-family: monospace; font-size: 22px; font-weight: 700; color: #633806; }
+  .syntax-params { display: flex; justify-content: center; gap: 32px; margin-top: 10px; flex-wrap: wrap; }
+  .param { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .param-name { font-family: monospace; font-size: 14px; font-weight: 600; }
+  .param-val  { font-size: 22px; font-weight: 700; }
+  .param-desc { font-size: 11px; }
+  .p-start .param-name,.p-start .param-val { color: #185FA5; } .p-start .param-desc { color: #185FA5aa; }
+  .p-stop  .param-name,.p-stop  .param-val { color: #A32D2D; } .p-stop  .param-desc { color: #A32D2Daa; }
+  .p-step  .param-name,.p-step  .param-val { color: #27500A; } .p-step  .param-desc { color: #27500Aaa; }
+
+  /* Number line */
+  .numline-wrap { background: #f9f9f9; border: 0.5px solid #e0e0e0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; opacity: 0; transition: opacity 0.5s; overflow-x: auto; }
+  .numline-title { font-size: 12px; color: #888; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .numline { display: flex; align-items: center; min-width: max-content; }
+  .nl-item { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 48px; }
+  .nl-tick { width: 2px; height: 12px; background: #ccc; margin-bottom: 4px; border-radius: 1px; transition: background 0.3s; }
+  .nl-num  { font-size: 12px; font-weight: 500; color: #aaa; transition: color 0.3s, font-size 0.3s; }
+  .nl-line { flex: 1; height: 3px; background: #e0e0e0; margin-top: -20px; min-width: 20px; z-index: 0; }
+  .nl-dot  { width: 18px; height: 18px; border-radius: 50%; background: #e0e0e0; border: 2px solid #ccc; margin-bottom: 4px; transition: background 0.3s, border-color 0.3s, transform 0.3s; z-index: 1; }
+  .nl-label { font-size: 10px; color: #aaa; margin-top: 2px; min-height: 14px; }
+
+  .nl-item.active   .nl-dot { background:#EF9F27;border-color:#BA7517;transform:scale(1.35); }
+  .nl-item.active   .nl-num { color:#854F0B;font-size:14px; }
+  .nl-item.active   .nl-tick{ background:#EF9F27; }
+  .nl-item.active   .nl-label{ color:#854F0B;font-weight:600; }
+  .nl-item.included .nl-dot { background:#EF9F27;border-color:#BA7517; }
+  .nl-item.included .nl-num { color:#633806;font-weight:600; }
+  .nl-item.included .nl-tick{ background:#BA7517; }
+  .nl-item.stop-val .nl-dot { background:#FCEBEB;border-color:#E24B4A; }
+  .nl-item.stop-val .nl-num { color:#A32D2D; }
+  .nl-item.stop-val .nl-label{ color:#A32D2D; }
+  .nl-item.stop-val .nl-tick{ background:#E24B4A; }
+
+  /* Iteration table */
+  .iter-wrap { background: #f9f9f9; border: 0.5px solid #e0e0e0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; opacity: 0; transition: opacity 0.5s; overflow-x: auto; }
+  .iter-title { font-size: 12px; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .iter-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 420px; }
+  .iter-table th { text-align: left; padding: 6px 10px; color: #888; font-weight: 500; border-bottom: 1px solid #e0e0e0; font-size: 11px; text-transform: uppercase; }
+  .iter-table td { padding: 8px 10px; border-bottom: 0.5px solid #f0f0f0; vertical-align: middle; }
+  .iter-row { opacity: 0; transition: opacity 0.4s; }
+  .iter-row.show { opacity: 1; }
+  .iter-row.active-row td { background: #FAEEDA; }
+  .badge { display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500; }
+  .badge-keep { background:#EAF3DE;color:#27500A; }
+  .badge-stop { background:#FCEBEB;color:#A32D2D; }
+
+  /* Result */
+  .result-wrap { background: #f9f9f9; border: 0.5px solid #e0e0e0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; opacity: 0; transition: opacity 0.5s; }
+  .result-title { font-size: 12px; color: #888; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; min-height: 40px; }
+  .chip { border-radius: 8px; padding: 8px 14px; font-size: 16px; font-weight: 600; border: 2px solid #EF9F27; background: #FAEEDA; color: #633806; opacity: 0; transform: scale(0.7); transition: opacity 0.35s, transform 0.35s; }
+  .chip.show { opacity: 1; transform: scale(1); }
+  .result-code { font-family: monospace; font-size: 14px; color: #555; background: #fff; border: 0.5px solid #e0e0e0; border-radius: 6px; padding: 8px 12px; opacity: 0; transition: opacity 0.4s; }
+</style>
+</head>
+<body>
+
+<h2 style="font-size:17px;font-weight:500;color:#111;margin-bottom:1.25rem;">np.arange() — interactive simulator</h2>
+
+<!-- Inputs -->
+<div class="input-row">
+  <div class="input-group s-start">
+    <label>start</label>
+    <input type="number" id="inStart" value="1">
+  </div>
+  <div class="input-group s-stop">
+    <label>stop</label>
+    <input type="number" id="inStop" value="6">
+  </div>
+  <div class="input-group s-step">
+    <label>step</label>
+    <input type="number" id="inStep" value="2">
+  </div>
+  <div class="fn-preview" id="fnPreview">np.arange(1, 6, 2)</div>
+</div>
+<div class="error-msg" id="errorMsg"></div>
+
+<div class="btn-row">
+  <button class="primary" id="playBtn">▶ Play</button>
+  <button id="stepBtn">Step →</button>
+  <button id="resetBtn">↺ Reset</button>
+  <span style="font-size:12px;color:#888;">Speed:</span>
+  <select id="speedSel">
+    <option value="1000">Slow</option>
+    <option value="500" selected>Normal</option>
+    <option value="200">Fast</option>
+  </select>
+  <span id="phaseLabel" style="font-size:12px;color:#aaa;margin-left:4px;"></span>
+</div>
+
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+<div class="step-info" id="stepInfo">Set your values above, then press Play or Step.</div>
+
+<div class="syntax-card" id="syntaxCard">
+  <div class="syntax-fn" id="syntaxFn"></div>
+  <div class="syntax-params">
+    <div class="param p-start"><span class="param-name">start</span><span class="param-val" id="pStart"></span><span class="param-desc">begin here</span></div>
+    <div class="param p-stop" ><span class="param-name">stop</span><span class="param-val" id="pStop"></span><span class="param-desc">end before this</span></div>
+    <div class="param p-step" ><span class="param-name">step</span><span class="param-val" id="pStep"></span><span class="param-desc">jump by this much</span></div>
+  </div>
+</div>
+
+<div class="numline-wrap" id="numlineWrap">
+  <div class="numline-title">Number line — tracking the pointer</div>
+  <div class="numline" id="numline"></div>
+</div>
+
+<div class="iter-wrap" id="iterWrap">
+  <div class="iter-title">Iteration log — what happens at each step</div>
+  <table class="iter-table">
+    <thead><tr><th>Iteration</th><th>Current value</th><th>Condition</th><th>Action</th></tr></thead>
+    <tbody id="iterBody"></tbody>
+  </table>
+</div>
+
+<div class="result-wrap" id="resultWrap">
+  <div class="result-title">Result array — values collected</div>
+  <div class="chips" id="chips"></div>
+  <div class="result-code" id="resultCode"></div>
+</div>
+
+<script>
+let START, STOP, STEP, ITERATIONS, KEPT, NUMS, TOTAL_STEPS;
+let current = -1, playing = false, playTimer = null;
+let paramsLocked = false;
+
+const $ = id => document.getElementById(id);
+
+function getInputs() {
+  return { start: parseFloat($('inStart').value), stop: parseFloat($('inStop').value), step: parseFloat($('inStep').value) };
+}
+
+function validate({ start, stop, step }) {
+  if (isNaN(start) || isNaN(stop) || isNaN(step)) return 'All values must be numbers.';
+  if (step === 0) return 'step cannot be 0.';
+  if (step > 0 && start >= stop) return `With a positive step, start (${start}) must be less than stop (${stop}).`;
+  if (step < 0 && start <= stop) return `With a negative step, start (${start}) must be greater than stop (${stop}).`;
+  const count = Math.ceil((stop - start) / step);
+  if (count > 30) return `This would produce ${count} values — try a larger step or smaller range (max 30 shown).`;
+  return null;
+}
+
+function buildParams(start, stop, step) {
+  KEPT = [];
+  let v = start;
+  while (step > 0 ? v < stop : v > stop) { KEPT.push(v); v = Math.round((v + step) * 1e10) / 1e10; }
+  const finalV = Math.round((KEPT.length ? KEPT[KEPT.length-1] + step : start + step) * 1e10) / 1e10;
+
+  ITERATIONS = KEPT.map((cur, i) => {
+    const next = Math.round((cur + step) * 1e10) / 1e10;
+    const op = step > 0 ? '<' : '>';
+    return { iter: i+1, cur, check: `${cur} ${op} ${stop} → True`, action: `Keep ${cur}, jump ${step>0?'+':''}${step} → next = ${next}`, keep: true };
+  });
+  const stopCur = Math.round((start + KEPT.length * step) * 1e10) / 1e10;
+  const op = step > 0 ? '<' : '>';
+  ITERATIONS.push({ iter: KEPT.length+1, cur: stopCur, check: `${stopCur} ${op} ${stop} → False`, action: `Stop — exit loop`, keep: false });
+
+  // Number line range: a few ticks beyond each side
+  const allVals = ITERATIONS.map(it => it.cur).concat([stop]);
+  const lo = Math.min(...allVals), hi = Math.max(...allVals);
+  const pad = Math.abs(step);
+  const nlMin = lo - pad, nlMax = hi + pad;
+  const nlStep = Math.abs(step) >= 1 ? (Math.abs(step) > 10 ? Math.ceil(Math.abs(step)/5) : 1) : Math.abs(step);
+
+  NUMS = [];
+  for (let x = nlMin; x <= nlMax + 1e-9; x = Math.round((x + nlStep) * 1e10) / 1e10) NUMS.push(x);
+  if (NUMS.length > 40) {
+    // thin it out
+    const keys = new Set([...allVals.map(String)]);
+    NUMS = NUMS.filter((n,i) => i%2===0 || keys.has(String(n)));
+  }
+
+  TOTAL_STEPS = 3 + ITERATIONS.length + 1 + KEPT.length + 1; // syntax, numline, iter, each iter, result, each chip, code
+}
+
+function updatePreview() {
+  const { start, stop, step } = getInputs();
+  $('fnPreview').textContent = `np.arange(${start}, ${stop}, ${step})`;
+}
+
+function showError(msg) {
+  const el = $('errorMsg');
+  if (msg) { el.textContent = msg; el.style.display = 'block'; }
+  else el.style.display = 'none';
+}
+
+function getSpeed() { return parseInt($('speedSel').value); }
+function setInfo(txt) { $('stepInfo').textContent = txt; }
+function setPhase(txt) { $('phaseLabel').textContent = txt; }
+function setPct(s) { $('progressFill').style.width = Math.round(((s+1)/TOTAL_STEPS)*100)+'%'; }
+function showEl(id) { $(id).style.opacity = '1'; }
+
+function buildNumline() {
+  const nl = $('numline'); nl.innerHTML = '';
+  NUMS.forEach((n, i) => {
+    if (i > 0) { const line = document.createElement('div'); line.className = 'nl-line'; nl.appendChild(line); }
+    const item = document.createElement('div'); item.className = 'nl-item'; item.id = 'nlitem_' + n;
+    const label = n === STOP ? 'stop' : '';
+    item.innerHTML = `<div class="nl-dot"></div><div class="nl-num">${n}</div><div class="nl-label">${label}</div>`;
+    nl.appendChild(item);
+  });
+}
+
+function highlightNumline(activeVal, includedVals, stopVal) {
+  NUMS.forEach(n => {
+    const el = document.getElementById('nlitem_' + n); if (!el) return;
+    el.className = 'nl-item';
+    if (n === activeVal) el.classList.add('active');
+    else if (includedVals.includes(n)) el.classList.add('included');
+    else if (n === stopVal) el.classList.add('stop-val');
+  });
+}
+
+function addIterRow(i, isActive) {
+  const it = ITERATIONS[i], tbody = $('iterBody');
+  let tr = document.getElementById('iterrow_' + i);
+  if (!tr) {
+    tr = document.createElement('tr'); tr.className = 'iter-row'; tr.id = 'iterrow_' + i;
+    tr.innerHTML = `<td>#${it.iter}</td><td style="font-family:monospace;font-weight:600;color:#633806;">${it.cur}</td><td>${it.check}</td><td>${it.keep ? '<span class="badge badge-keep">✓ keep</span>' : '<span class="badge badge-stop">✗ stop</span>'} ${it.action}</td>`;
+    tbody.appendChild(tr);
+    requestAnimationFrame(() => tr.classList.add('show'));
+  }
+  document.querySelectorAll('.iter-row').forEach(r => r.classList.remove('active-row'));
+  if (isActive) tr.classList.add('active-row');
+}
+
+function applyStep(s) {
+  setPct(s);
+
+  // Step 0: syntax card
+  if (s === 0) {
+    showEl('syntaxCard');
+    $('syntaxFn').innerHTML = `np.arange(<span style="color:#185FA5">${START}</span>, <span style="color:#A32D2D">${STOP}</span>, <span style="color:#27500A">${STEP}</span>)`;
+    $('pStart').textContent = START; $('pStop').textContent = STOP; $('pStep').textContent = STEP;
+    setInfo(`np.arange(${START}, ${STOP}, ${STEP}) — start=${START}, stop=${STOP} (not included), step=${STEP}.`);
+    setPhase('Syntax'); return;
+  }
+
+  // Step 1: numline
+  if (s === 1) {
+    showEl('numlineWrap'); buildNumline();
+    const stopEl = document.getElementById('nlitem_' + STOP);
+    if (stopEl) stopEl.classList.add('stop-val');
+    setInfo(`Number line ready. Pointer starts at ${START} and jumps by ${STEP} until it ${STEP>0?'reaches or passes':'goes below'} ${STOP}.`);
+    setPhase('Number line'); return;
+  }
+
+  // Step 2: iter table
+  if (s === 2) {
+    showEl('iterWrap');
+    setInfo('Iteration log will track each step: value → condition check → keep or stop.');
+    setPhase('Iteration log'); return;
+  }
+
+  // Steps 3 to 3+ITERATIONS.length-1: one row per iteration
+  const iterEnd = 3 + ITERATIONS.length;
+  if (s >= 3 && s < iterEnd) {
+    const i = s - 3, it = ITERATIONS[i];
+    addIterRow(i, true);
+    const included = KEPT.slice(0, i);
+    if (it.keep) highlightNumline(it.cur, included, STOP);
+    else highlightNumline(null, KEPT, STOP);
+    setInfo(it.keep
+      ? `Iteration ${it.iter}: current = ${it.cur}. Condition: ${it.check}. Keep ${it.cur}, jump to ${Math.round((it.cur+STEP)*1e10)/1e10}.`
+      : `Iteration ${it.iter}: current = ${it.cur}. Condition: ${it.check}. Exit loop. Done!`);
+    setPhase(`Iteration ${it.iter}`); return;
+  }
+
+  // Next: result wrap
+  if (s === iterEnd) {
+    showEl('resultWrap');
+    setInfo(`Loop complete. Collected ${KEPT.length} value${KEPT.length!==1?'s':''}. Building result array...`);
+    setPhase('Result'); return;
+  }
+
+  // Chips: one per kept value
+  const chipEnd = iterEnd + 1 + KEPT.length;
+  if (s > iterEnd && s < chipEnd) {
+    const ci = s - iterEnd - 1;
+    const chip = document.createElement('div'); chip.className = 'chip'; chip.textContent = KEPT[ci];
+    $('chips').appendChild(chip);
+    requestAnimationFrame(() => chip.classList.add('show'));
+    setInfo(`Value ${KEPT[ci]} added. ${ci < KEPT.length-1 ? `Next: ${KEPT[ci+1]}.` : 'All values collected!'}`);
+    setPhase(`Value ${ci+1}/${KEPT.length}`); return;
+  }
+
+  // Last step: result code
+  if (s === chipEnd) {
+    const rc = $('resultCode');
+    rc.textContent = `np.arange(${START}, ${STOP}, ${STEP})  →  array([${KEPT.join(', ')}])`;
+    rc.style.opacity = '1';
+    setInfo(`Final result: array([${KEPT.join(', ')}]) — a NumPy array with ${KEPT.length} element${KEPT.length!==1?'s':''}.`);
+    setPhase('Done ✓'); return;
+  }
+}
+
+function stepForward() {
+  if (current === -1) {
+    // lock params and build
+    const vals = getInputs();
+    const err = validate(vals);
+    if (err) { showError(err); return; }
+    showError(null);
+    START = vals.start; STOP = vals.stop; STEP = vals.step;
+    buildParams(START, STOP, STEP);
+    lockInputs(true);
+  }
+  if (current >= TOTAL_STEPS - 1) return;
+  current++;
+  applyStep(current);
+  $('stepBtn').disabled = current >= TOTAL_STEPS - 1;
+}
+
+function startPlay() {
+  if (current >= TOTAL_STEPS - 1) hardReset();
+  // validate before starting
+  if (current === -1) {
+    const vals = getInputs();
+    const err = validate(vals);
+    if (err) { showError(err); return; }
+    showError(null);
+    START = vals.start; STOP = vals.stop; STEP = vals.step;
+    buildParams(START, STOP, STEP);
+    lockInputs(true);
+  }
+  playing = true;
+  $('playBtn').textContent = '⏸ Pause';
+  $('stepBtn').disabled = true;
+  tick();
+}
+
+function tick() {
+  if (!playing) return;
+  if (current >= TOTAL_STEPS - 1) { stopPlay(); return; }
+  stepForward();
+  playTimer = setTimeout(tick, getSpeed());
+}
+
+function stopPlay() {
+  playing = false; clearTimeout(playTimer);
+  $('playBtn').textContent = '▶ Play';
+  $('stepBtn').disabled = current >= TOTAL_STEPS - 1;
+}
+
+function lockInputs(lock) {
+  paramsLocked = lock;
+  ['inStart','inStop','inStep'].forEach(id => { $(id).disabled = lock; $(id).style.opacity = lock ? '0.5' : '1'; });
+}
+
+function hardReset() {
+  stopPlay(); current = -1;
+  ['syntaxCard','numlineWrap','iterWrap','resultWrap'].forEach(id => $(id).style.opacity = '0');
+  $('iterBody').innerHTML = ''; $('chips').innerHTML = '';
+  $('resultCode').style.opacity = '0'; $('resultCode').textContent = '';
+  $('progressFill').style.width = '0%';
+  $('phaseLabel').textContent = '';
+  $('stepInfo').textContent = 'Set your values above, then press Play or Step.';
+  $('stepBtn').disabled = false;
+  $('playBtn').textContent = '▶ Play';
+  lockInputs(false);
+}
+
+$('playBtn').addEventListener('click', () => { if (playing) stopPlay(); else startPlay(); });
+$('stepBtn').addEventListener('click', stepForward);
+$('resetBtn').addEventListener('click', hardReset);
+['inStart','inStop','inStep'].forEach(id => $(id).addEventListener('input', () => { if (!paramsLocked) { updatePreview(); showError(null); } }));
+
+updatePreview();
+</script>
+</body>
+</html>
